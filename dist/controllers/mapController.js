@@ -5,19 +5,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.geocodeAddress = exports.getPlaceDetails = exports.getAutocompleteSuggestions = exports.getDirections = void 0;
 const axios_1 = __importDefault(require("axios"));
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+// Move API key inside functions or access it via process.env directly to ensure it's loaded
 const getDirections = async (req, res) => {
     try {
         const { origin, destination, mode = 'driving' } = req.query;
         if (!origin || !destination) {
             return res.status(400).json({ msg: 'Origin and destination are required' });
         }
+        const apiKey = process.env.GOOGLE_MAPS_API_KEY;
         const response = await axios_1.default.get(`https://maps.googleapis.com/maps/api/directions/json`, {
             params: {
                 origin,
                 destination,
                 mode,
-                key: GOOGLE_MAPS_API_KEY,
+                key: apiKey,
             },
         });
         res.json(response.data);
@@ -34,9 +35,10 @@ const getAutocompleteSuggestions = async (req, res) => {
         if (!input) {
             return res.status(400).json({ msg: 'Input is required' });
         }
+        const apiKey = process.env.GOOGLE_MAPS_API_KEY;
         const params = {
             input,
-            key: GOOGLE_MAPS_API_KEY,
+            key: apiKey,
             components: components || 'country:in',
             types: types || 'geocode',
         };
@@ -48,8 +50,8 @@ const getAutocompleteSuggestions = async (req, res) => {
         res.json(response.data);
     }
     catch (error) {
-        console.error('Proxy Autocomplete Error:', error.message);
-        res.status(500).json({ msg: 'Failed to fetch suggestions from Google' });
+        console.error('Proxy Autocomplete Error:', error.response?.data || error.message);
+        res.status(500).json({ msg: 'Failed to fetch suggestions from Google', error: error.message });
     }
 };
 exports.getAutocompleteSuggestions = getAutocompleteSuggestions;
@@ -59,11 +61,12 @@ const getPlaceDetails = async (req, res) => {
         if (!place_id) {
             return res.status(400).json({ msg: 'Place ID is required' });
         }
+        const apiKey = process.env.GOOGLE_MAPS_API_KEY;
         const response = await axios_1.default.get(`https://maps.googleapis.com/maps/api/place/details/json`, {
             params: {
                 place_id,
                 fields,
-                key: GOOGLE_MAPS_API_KEY,
+                key: apiKey,
             },
         });
         res.json(response.data);
@@ -80,10 +83,11 @@ const geocodeAddress = async (req, res) => {
         if (!address) {
             return res.status(400).json({ msg: 'Address is required' });
         }
+        const apiKey = process.env.GOOGLE_MAPS_API_KEY;
         const response = await axios_1.default.get(`https://maps.googleapis.com/maps/api/geocode/json`, {
             params: {
                 address,
-                key: GOOGLE_MAPS_API_KEY,
+                key: apiKey,
                 components: components || 'country:IN',
             },
         });

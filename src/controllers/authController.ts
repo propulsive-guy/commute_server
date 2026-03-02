@@ -87,13 +87,37 @@ export const updateProfile = async (req: any, res: Response) => {
             return res.status(401).json({ msg: 'User not authorized' });
         }
 
+        const updatePayload: { name?: string; phone?: string; aadharNumber?: string; photoUrl?: string } = {
+            name,
+            phone,
+            aadharNumber,
+        };
+        if (photoUrl) {
+            updatePayload.photoUrl = photoUrl;
+        }
+
         const updatedUser = await User.findByIdAndUpdate(
             userId,
-            { name, phone, aadharNumber, photoUrl },
+            updatePayload,
             { new: true }
         ).select('-password');
 
         res.json(updatedUser);
+    } catch (err: any) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+export const getProfile = async (req: any, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ msg: 'Not authorized' });
+
+        const user = await User.findById(userId).select('-password');
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+
+        res.json(user);
     } catch (err: any) {
         console.error(err.message);
         res.status(500).send('Server Error');

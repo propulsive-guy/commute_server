@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Ride, { IRide } from '../models/Ride';
+import Booking from '../models/Booking';
 import { io } from '../index';
 
 // ─── Geo helpers ───
@@ -102,8 +103,21 @@ export const postRide = async (req: Request, res: Response) => {
 export const searchRides = async (req: Request, res: Response) => {
     try {
         const { longitude, latitude, maxDistance = 10000, sourceAddress, destAddress } = req.query;
+        const userId = (req as any).user?.id;
+
+        let bookedRideIds: string[] = [];
+        if (userId) {
+            const myBookings = await Booking.find({
+                passenger: userId,
+                status: { $in: ['pending', 'accepted'] }
+            }).select('ride');
+            bookedRideIds = myBookings.map(b => b.ride.toString());
+        }
 
         let query: any = { status: 'open' };
+        if (bookedRideIds.length > 0) {
+            query._id = { $nin: bookedRideIds };
+        }
 
         // If geo coordinates provided, use $near
         if (longitude && latitude) {
@@ -143,7 +157,23 @@ export const searchRides = async (req: Request, res: Response) => {
 export const getAllRides = async (req: Request, res: Response) => {
     try {
         const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
-        const rides = await Ride.find({ status: 'open', createdAt: { $gte: tenMinAgo } })
+        const userId = (req as any).user?.id;
+
+        let bookedRideIds: string[] = [];
+        if (userId) {
+            const myBookings = await Booking.find({
+                passenger: userId,
+                status: { $in: ['pending', 'accepted'] }
+            }).select('ride');
+            bookedRideIds = myBookings.map(b => b.ride.toString());
+        }
+
+        let query: any = { status: 'open', createdAt: { $gte: tenMinAgo } };
+        if (bookedRideIds.length > 0) {
+            query._id = { $nin: bookedRideIds };
+        }
+
+        const rides = await Ride.find(query)
             .populate('rider', 'name email rating photoUrl')
             .sort({ createdAt: -1 })
             .limit(50);
@@ -200,7 +230,20 @@ export const matchRides = async (req: Request, res: Response) => {
 
         // Get open rides posted within last 10 minutes
         const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
-        const rides = await Ride.find({ status: 'open', createdAt: { $gte: tenMinAgo } })
+        const userId = (req as any).user.id;
+
+        // Find rides this user has already booked (pending or accepted)
+        const myBookings = await Booking.find({
+            passenger: userId,
+            status: { $in: ['pending', 'accepted'] }
+        }).select('ride');
+        const bookedRideIds = myBookings.map(b => b.ride.toString());
+
+        const rides = await Ride.find({
+            _id: { $nin: bookedRideIds },
+            status: 'open',
+            createdAt: { $gte: tenMinAgo }
+        })
             .populate('rider', 'name email rating photoUrl')
             .sort({ createdAt: -1 });
 

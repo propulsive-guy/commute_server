@@ -15,7 +15,7 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // Init Middleware
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 app.use(cors());
 
 // Create HTTP server and attach Socket.IO
